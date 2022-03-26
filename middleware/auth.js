@@ -1,24 +1,32 @@
 const jwt = require("jsonwebtoken");
+const dotenv = require('dotenv');
 
-const auth = (req, res, next) => {
+
+dotenv.config();
+
+const secret = process.env.JWT_SECRET
+
+const auth = async (req, res, next) => {
   try {
-    const token = req.header("x-auth-token");
-    if (!token)
-      return res
-        .status(401)
-        .json({ msg: "No authentication token, authorization denied." });
+    const token = req.headers.authorization.split(" ")[1];
+    const isCustomAuth = token.length < 500;
 
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    if (!verified)
-      return res
-        .status(401)
-        .json({ msg: "Token verification failed, authorization denied." });
+    let decodedData;
 
-    req.user = verified.id;
+    if (token && isCustomAuth) {      
+      decodedData = jwt.verify(token, secret);
+
+      req.userId = decodedData?.id;
+    } else {
+      decodedData = jwt.decode(token);
+
+      req.userId = decodedData?.sub;
+    }    
+
     next();
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.log(error);
   }
 };
 
-module.exports = auth;
+export default auth;
